@@ -26,7 +26,7 @@ while i < 1:
     table.add_row([curtime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
 
 print ("+------------------------------------------------------------------------------------+")
-print ("|                             PYTHEAS MANUAL CONTROL DECK                            |")
+print ("|                                PYTHEAS CONTROL DECK                                |")
 print ("+------------------------------------------------------------------------------------+")
 print ()
 print (table)
