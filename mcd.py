@@ -7,6 +7,10 @@ from prettytable import PrettyTable
 from time import strftime, sleep
 import os, subprocess, sys
 import logging
+import io
+import picamera
+import threading
+import socket
 
 def dummy(func_name):
     # Provides dummy output (and a log message) for functions that aren't fully developed yet
@@ -24,6 +28,10 @@ def refreshUI():
     headertable.clear_rows()
     ltime, pressure, depth, etemp, itemp = getReadings()
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
+    if streamPause:
+        streamstat = "OFF"
+    else:
+        streamstat = "ON"
 
     header()
     print (headertable)
@@ -31,6 +39,7 @@ def refreshUI():
     print ("1. Capture Picture")
     print ("2. Automatic Data Capture")
     print ("3. Change Camera Settings")
+    print ("4. Toggle Video Stream (Currently " + streamstat + ")")
     print ("-----")
     print ("9. Refresh Display")
     print ("0. Quit MCD")
@@ -90,9 +99,44 @@ def acap(poll_interval, cap_interval, write_interval, poll_period):
 
 def quitMCD():
     # Gracefully closes the MCD
+    global streamStop
+    global streamPause
+    streamPause = True
+    streamStop = True
+    logging.debug("Sending kill signal to netstreamer...")
+    streamThread.join()
+    logging.debug("netstreamer has stopped.")
     logging.info("User-invoked QUIT")
     sys.exit()
 
+def netStream():
+    # Drives the network video stream for live viewing by the SCU.
+    server_socket = socket.socket()
+    server_socket.bind(('0.0.0.0', 19212))
+    server_socket.listen(5)
+
+    cam.resolution = (1296, 730)
+    cam.framerate = 24
+
+    while not streamStop:
+        while not streamPause:
+            ltime, pressure, depth, etemp, itemp = getReadings()
+            cam.annotate_text = ltime + " | " + str(pressure) + " mbar | " + str(depth) + " m | " + str(etemp) + " C | " + str(itemp) + " C"
+            connection = server_socket.accept()[0].makefile('wb')
+            cam.start_recording(connection, format='h264')
+        cam.stop_recording()
+        connection.close()
+        time.sleep(0.1)
+    server_socket.close()
+
+def toggle(value):
+    logging.debug("Value was " + str(value))
+    if value == True:
+        value = False
+    else:
+        value = True
+    logging.debug("Value is now " + str(value))
+    return value
 
 # Initialization
 headertable = PrettyTable()
@@ -104,8 +148,16 @@ logging.basicConfig(
         logging.FileHandler("./mcd.log")
     ]
 )
+
+cam = picamera.PiCamera()
+streamStop = False
+streamPause = False
+streamThread = threading.Thread(target=netStream, daemon=True)
+streamThread.start()
+
 logging.info("MCD is initialized.")
 
+# Main Loop
 while True:
     refreshUI()
     choice = int(input("Please choose a command: "))
@@ -115,6 +167,8 @@ while True:
         acap_menu()
     elif choice == 3:
         camsettings()
+    elif choice == 4:
+        streamPause = toggle(streamPause)
     elif choice == 9:
         refreshUI()
     elif choice == 0:
