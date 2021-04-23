@@ -2,6 +2,10 @@
 
 Main repository for the Pytheas submersible probe system. 
 
+**Misc. Info**
+- The MCD-generated video stream is located at tcp/h264://pytheas-usp:19212
+- It is HIGHLY recommended to adjust GPU memory allocation on the USP to 256MB. This can be done from raspi-config.
+
 **List of Acronyms/Terms**
 - **USP** - Underwater Sensor Platform - The primary platform in the Pytheas system; a water-proofed and pressure-rated sensor pod designed to be deployed in deep water.
 - **SCU** - Surface Control Unit       - Surface-based platform for communicating and controlling the USP.
@@ -9,7 +13,6 @@ Main repository for the Pytheas submersible probe system.
 - **ACD** - Autonomous Control Deck    - USP Control system designed to operate the USP automatically according to pre-configured settings.
 - **Tethered Mode**   - Regular mode of operation; the USP is tethered to the SCU via Cat6 cable so manual operation is possible. Max operating depth is restricted by the length of the cable.
 - **Autonomous Mode** - USP has no tether to the SCU and is only able to follow pre-scripted operations (via the ACD). Max operating depth is the USP's crush depth (350 meters).
-
 
 **Key Files and Scripts**
 - **mcd.py** - Master Control Deck. Run this on the USP for easy manual control of the platform. 
