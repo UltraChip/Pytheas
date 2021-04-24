@@ -1,4 +1,4 @@
-## PYTHEAS MANUAL CONTROL DECK
+## PYTHEAS MASTER CONTROL DECK
 ##
 ## Primary control interface for the Pytheas
 ## Underwater Sensor Platform (USP).
@@ -14,6 +14,14 @@ import socket
 import math
 import csv
 
+
+# Quick Values: Settings you might need to change quickly
+
+fileroot = "./"    # Root file path where data gets saved
+camrot = 180       # Default rotation for the camera
+
+
+# Function declarations
 def dummy(func_name):
     # Provides dummy output (and a log message) for functions that aren't fully developed yet
     #logging.debug(func_name + " was called.")
@@ -23,7 +31,7 @@ def header():
     # Prints header
     os.system('clear')
     print ("+------------------------------------------------------------------------------------+")
-    print ("|                                MANUAL CONTROL DECK                                 |")
+    print ("|                                MASTER CONTROL DECK                                 |")
 
 def subheader(menuname):
     # Prints the header for submenus
@@ -40,10 +48,13 @@ def subheader(menuname):
     print()
 
 def refreshUI():
-    # Prints the main menu
+    # Prints the main menu & adds entry to the passive capture log
     headertable.clear_rows()
     ltime, pressure, depth, etemp, itemp = getReadings()
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
+    with open(sessionFullFile, mode='a') as file:
+        dx = csv.writer(file)
+        dx.writerow([ltime, pressure, depth, etemp, itemp])
 
     header()
     print (headertable)
@@ -74,10 +85,10 @@ def capture(capmode):
         cam.resolution = (3280, 2464)  # 3280x2462 == max resolution of picamera v2
     except picamera.exc.PiCameraRuntimeError:
         logging.info("Preview stream is open - camera capturing at reduced resolution.")
-    filename = "MCD_" + capmode + "_" + strftime("%Y%m%d-%H%M%S") + ".png"
+    filename = "{}_{}_{}.png".format(sessionName, capmode, strftime("%Y%m%d-%H%M%S"))
     buildAnnotate()
-    cam.capture(filename)
-    logging.info("Picture captured as {}".format(filename))
+    cam.capture("{}/{}".format(sessionPath, filename))
+    logging.info("Picture captured as "+ filename)
     return filename
 
 def camsettings():
@@ -257,19 +268,23 @@ def acap_menu():
 
 def acap(poll_interval, cap_interval, poll_period):
     # Performs automatic capture of sensor data & pictures
-    filename = "MCD_ACAP_" + strftime("%Y%m%d-%H%M%S") + ".csv"
+    filename = "{}_ACAP_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S"))
     subheader("Automatic Data Capture")
+    autocaptures = []
+    headertable.clear_rows()
 
-    with open(filename, mode='w') as file:
+    with open("{}/{}".format(sessionPath, filename), mode='w') as file:
         dx = csv.writer(file)
         dx.writerow(["T", "LTime", "Pressure", "Depth", "ETemp", "ITemp"])
-        logging.info("Automatic data capture under file name {} has begun".format(filename))
+        logging.info("Automatic data capture under file name " + filename + " has begun.")
         for tick in range(1, poll_period + 1):
             ltime, pressure, depth, etemp, itemp = getReadings()
             dx.writerow([tick, ltime, pressure, depth, etemp, itemp])
 
             if cap_interval != 0 and tick % cap_interval == 0:
-                capture("auto")
+                autocap = threading.Thread(target=capture, args=("auto",), daemon=False)
+                autocaptures.append(autocap)
+                autocap.start()
 
             headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
             os.system('clear')
@@ -281,6 +296,7 @@ def acap(poll_interval, cap_interval, poll_period):
     return
 
 def quitMCD():
+    # Gracefully closes the program
     logging.info("User-invoked QUIT")
     sys.exit()
 
@@ -341,6 +357,7 @@ def buildAnnotate():
     cam.annotate_background = picamera.Color('black')
     cam.annotate_text = "Time: {} | Pressure: {}mbar | Depth: {}m | ETemp: {}C | ITemp {}C".format(ltime, pressure, depth, etemp, itemp)
 
+
 # Initialization
 headertable = PrettyTable()
 headertable.field_names = ["Local Time", "Pressure (millibars)", "Depth (meters)", "External Temp", "Internal Temp"]
@@ -348,15 +365,27 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("./mcd.log")
+        logging.FileHandler("{}/mcd.log".format(fileroot))
     ]
 )
+logging.info("MCD has started.")
 
 cam = picamera.PiCamera()
+cam.rotation = camrot
 streamThread = threading.Thread(target=netvidHandler, daemon=True)
 streamThread.start()
 
-logging.info("MCD is initialized.")
+print()
+sessionName = input("What is the name of this session? ")
+sessionPath = "{}/{}".format(fileroot, sessionName)
+os.system("mkdir {}".format(sessionPath))
+sessionFile = "{}_passiveCap_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S"))
+sessionFullFile = "{}/{}".format(sessionPath, sessionFile)
+with open(sessionFullFile, mode='a') as file:
+    dx = csv.writer(file)
+    dx.writerow(["LTime", "Pressure", "Depth", "ETemp", "ITemp"])
+logging.info("MCD session " + sessionName + " has been initialized.")
+
 
 # Main Loop
 while True:

@@ -9,7 +9,7 @@ Main repository for the Pytheas submersible probe system.
 **List of Acronyms/Terms**
 - **USP** - Underwater Sensor Platform - The primary platform in the Pytheas system; a water-proofed and pressure-rated sensor pod designed to be deployed in deep water.
 - **SCU** - Surface Control Unit       - Surface-based platform for communicating and controlling the USP.
-- **MCD** - Manual Control Deck        - USP Control system; provides a user interface for live control.
+- **MCD** - Master Control Deck        - USP Control system; provides a user interface for live control.
 - **ACD** - Autonomous Control Deck    - USP Control system designed to operate the USP automatically according to pre-configured settings.
 - **Tethered Mode**   - Regular mode of operation; the USP is tethered to the SCU via Cat6 cable so manual operation is possible. Max operating depth is restricted by the length of the cable.
 - **Autonomous Mode** - USP has no tether to the SCU and is only able to follow pre-scripted operations (via the ACD). Max operating depth is the USP's crush depth (350 meters).
