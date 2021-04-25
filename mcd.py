@@ -50,12 +50,8 @@ def subheader(menuname):
 def refreshUI():
     # Prints the main menu & adds entry to the passive capture log
     headertable.clear_rows()
-    ltime, pressure, depth, etemp, itemp = getReadings()
+    ltime, pressure, depth, etemp, itemp = writeLog("")
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
-    with open(sessionFullFile, mode='a') as file:
-        dx = csv.writer(file)
-        dx.writerow([ltime, pressure, depth, etemp, itemp])
-
     header()
     print (headertable)
     print ()
@@ -64,6 +60,7 @@ def refreshUI():
     print ("1. Capture Picture")
     print ("2. Automatic Data Capture")
     print ("3. Change Camera Settings")
+    print ("4. Write Note to Log")
     print ("-----")
     print ("9. Refresh Display")
     print ("0. Quit MCD")
@@ -75,8 +72,14 @@ def getReadings():
     pressure = dummy("getReadings-pressure")
     depth = dummy("getReadings-depth")
     etemp = dummy("getReadings-etemp")
-    #itemp = dummy("getReadings-itemp")  # Use this for itemp when not running on a RasPi
     itemp = round(float(subprocess.getoutput('cat /sys/class/thermal/thermal_zone0/temp')) / 1000, 2)
+    return ltime, pressure, depth, etemp, itemp
+
+def writeLog(note):
+    ltime, pressure, depth, etemp, itemp = getReadings()
+    with open(sessionFullFile, mode='a') as file:
+        dx = csv.writer(file)
+        dx.writerow([ltime, pressure, depth, etemp, itemp, note])
     return ltime, pressure, depth, etemp, itemp
 
 def capture(capmode):
@@ -383,7 +386,7 @@ sessionFile = "{}_passiveCap_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S
 sessionFullFile = "{}/{}".format(sessionPath, sessionFile)
 with open(sessionFullFile, mode='a') as file:
     dx = csv.writer(file)
-    dx.writerow(["LTime", "Pressure", "Depth", "ETemp", "ITemp"])
+    dx.writerow(["LTime", "Pressure", "Depth", "ETemp", "ITemp", "Notes"])
 logging.info("MCD session " + sessionName + " has been initialized.")
 
 
@@ -402,6 +405,9 @@ while True:
     elif choice == 3:
         camsettings()
     elif choice == 4:
+        print()
+        note = input("Write your note here: ")
+        writeLog(note)
         refreshUI()
     elif choice == 9:
         refreshUI()
