@@ -13,12 +13,13 @@ import threading
 import socket
 import math
 import csv
+import RPi.GPIO as gpio
 
 
 # Quick Values: Settings you might need to change quickly
 
 fileroot = "./"    # Root file path where data gets saved
-camrot = 180       # Default rotation for the camera
+camrot = 0         # Default rotation for the camera
 
 
 # Function declarations
@@ -53,6 +54,10 @@ def refreshUI():
     ltime, pressure, depth, etemp, itemp = writeLog("")
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
     header()
+    if gpio.input(lamp):
+        lampStatus = "ON"
+    else:
+        lampStatus = "OFF"
     print (headertable)
     print ()
     print ("Streaming video at tcp/h264://192.168.1.2:19212")
@@ -61,6 +66,7 @@ def refreshUI():
     print ("2. Automatic Data Capture")
     print ("3. Change Camera Settings")
     print ("4. Write Note to Log")
+    print ("5. Toggle Lamp (Currently {})".format(lampStatus))
     print ("-----")
     print ("9. Refresh Display")
     print ("0. Quit MCD")
@@ -84,6 +90,8 @@ def writeLog(note):
 
 def capture(capmode):
     # Captures a single picture
+    lampstatus = gpio.input(lamp)
+    gpio.output(lamp, flash)
     try:
         cam.resolution = (3280, 2464)  # 3280x2462 == max resolution of picamera v2
     except picamera.exc.PiCameraRuntimeError:
@@ -92,6 +100,7 @@ def capture(capmode):
     buildAnnotate()
     cam.capture("{}/{}".format(sessionPath, filename))
     logging.info("Picture captured as "+ filename)
+    gpio.output(lamp, lampstatus)
     return filename
 
 def camsettings():
@@ -212,13 +221,19 @@ def camsettings():
             cam.awb_mode = 'horizon'
         return
 
+    global flash
     while True:
+        if flash:
+            flashStatus = "ON"
+        else:
+            flashStatus = "OFF"
         subheader("Adjust Camera Settings")
 
         print ("1. Brightness (currently {})".format(cam.brightness))
         print ("2. Contrast (currently {})".format(cam.contrast))
         print ("3. Exposure Mode (currently {})".format(cam.exposure_mode))
         print ("4. White Balance Mode (currently {})".format(cam.awb_mode))
+        print ("5. Use Lamp During Capture (currently {})".format(flashStatus))
         print ("-----")
         print ("9. Reset everything to defaults")
         print ("0. Go back to main menu")
@@ -233,12 +248,18 @@ def camsettings():
             setexposure()
         elif choice == 4:
             setwb()
+        elif choice == 5:
+            if flash:
+                flash = False
+            else:
+                flash = True
         elif choice == 9:
             ## Write code to set all defaults here
             cam.brightness = 50
             cam.contrast = 0
             cam.exposure_mode = 'auto'
             cam.awb_mode = 'auto'
+            flash = False
             print()
             print("All values set back to their defaults!")
             sleep(2)
@@ -300,6 +321,7 @@ def acap(poll_interval, cap_interval, poll_period):
 
 def quitMCD():
     # Gracefully closes the program
+    gpio.output(lamp, False)
     logging.info("User-invoked QUIT")
     sys.exit()
 
@@ -346,16 +368,15 @@ def netStream(connection):
             closeConnect("Connection Reset")
             run = False
 
-def toggle(value):
-    logging.debug("Value was " + str(value))
-    if value == True:
-        value = False
+def toggleLamp():
+    # Toggles the lamp state on or off
+    if gpio.input(lamp):
+        gpio.output(lamp, False)
     else:
-        value = True
-    logging.debug("Value is now " + str(value))
-    return value
+        gpio.output(lamp, True)
 
 def buildAnnotate():
+    # Builds the annotation string for the camera
     ltime, pressure, depth, etemp, itemp = getReadings()
     cam.annotate_background = picamera.Color('black')
     cam.annotate_text = "Time: {} | Pressure: {}mbar | Depth: {}m | ETemp: {}C | ITemp {}C".format(ltime, pressure, depth, etemp, itemp)
@@ -377,6 +398,13 @@ cam = picamera.PiCamera()
 cam.rotation = camrot
 streamThread = threading.Thread(target=netvidHandler, daemon=True)
 streamThread.start()
+
+lamp = 4       # GPIO pin for the lamp controller
+flash = False  # Determines if lamp should be lit when capturing pictures
+gpio.setmode(gpio.BCM)
+gpio.setwarnings(False)
+gpio.setup(lamp, gpio.OUT)
+gpio.output(lamp, False)
 
 print()
 sessionName = input("What is the name of this session? ")
@@ -409,6 +437,8 @@ while True:
         note = input("Write your note here: ")
         writeLog(note)
         refreshUI()
+    elif choice ==5:
+        toggleLamp()
     elif choice == 9:
         refreshUI()
     elif choice == 0:
