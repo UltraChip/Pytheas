@@ -31,4 +31,4 @@ Main repository for the Pytheas submersible probe system.
 **Dependencies for USP**
 - Python 3
 - PrettyTable python library
-
+- Screen
