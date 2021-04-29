@@ -1,4 +1,4 @@
-## PYTHEAS MASTER CONTROL DECK
+## PYTHEAS CONTROL SYSTEM
 ##
 ## Primary control interface for the Pytheas
 ## Underwater Sensor Platform (USP).
@@ -18,8 +18,9 @@ import RPi.GPIO as gpio
 
 # Quick Values: Settings you might need to change quickly
 
-fileroot = "./"    # Root file path where data gets saved
-camrot = 0         # Default rotation for the camera
+fileroot = "./"      # Root file path where data gets saved
+logfile = "pcs.log"  # Location of the PCS log file
+camrot = 0           # Default rotation for the camera
 
 
 # Function declarations
@@ -32,7 +33,7 @@ def header():
     # Prints header
     os.system('clear')
     print ("+------------------------------------------------------------------------------------+")
-    print ("|                                MASTER CONTROL DECK                                 |")
+    print ("|                               PYTHEAS CONTROL SYSTEM                               |")
 
 def subheader(menuname):
     # Prints the header for submenus
@@ -389,7 +390,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("{}/mcd.log".format(fileroot))
+        logging.FileHandler(logfile)
     ]
 )
 logging.info("MCD has started.")
