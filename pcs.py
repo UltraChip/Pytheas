@@ -339,6 +339,11 @@ def isAcap():
 
 def quitMCD():
     # Gracefully closes the program
+    if isAcap():
+        print()
+        print("ACAP is currently active! Quitting is not recommended.")
+        sleep(2)
+        return
     gpio.output(lamp, False)
     logging.info("User-invoked QUIT")
     sys.exit()
