@@ -3,7 +3,7 @@
 Main repository for the Pytheas submersible probe system. 
 
 **Misc. Info**
-- The MCD-generated video stream is located at tcp/h264://pytheas-usp:19212
+- The PCS-generated video stream is located at tcp/h264://pytheas-usp:19212
 - It is HIGHLY recommended to adjust GPU memory allocation on the USP to 256MB. This can be done from raspi-config.
 
 **List of Acronyms/Terms**
