@@ -4,7 +4,7 @@
 ## Underwater Sensor Platform (USP).
 
 from prettytable import PrettyTable
-from time import strftime, sleep
+from time import strftime, sleep, time
 import os, subprocess, sys
 import logging
 import io
@@ -290,7 +290,7 @@ def acap_menu():
     poll_period = 3600
 
     if pi:
-        poll_interval = int(pi)
+        poll_interval = float(pi)
     if ci:
         cap_interval = int(ci)
     if pp:
@@ -311,6 +311,7 @@ def acap(poll_interval, cap_interval, poll_period):
         dx.writerow(["T", "LTime", "Pressure", "Depth", "ETemp", "ITemp"])
         logging.info("Automatic data capture under file name " + filename + " has begun.")
         for tick in range(1, poll_period + 1):
+            startTime = time()
             ltime, pressure, depth, etemp, itemp = getReadings()
             dx.writerow([tick, ltime, pressure, depth, etemp, itemp])
 
@@ -319,7 +320,13 @@ def acap(poll_interval, cap_interval, poll_period):
                 autocaptures.append(autocap)
                 autocap.start()
 
-            sleep(poll_interval)
+            # This block ensures that the requested tick rate is accurate by
+            # factoring in how long it took for the tick to process before
+            # sleeping.
+            if (time() - startTime) >= poll_interval:
+                logging.debug("ACAP tick took longer than prescribed tick time!")
+            else:
+                sleep(poll_interval-(time()-startTime))
             tick += 1
     logging.info("Automatic data capture has ended.")
     return
