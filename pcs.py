@@ -54,14 +54,21 @@ def refreshUI():
     headertable.clear_rows()
     ltime, pressure, depth, etemp, itemp = writeLog("")
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
-    header()
+    
     if gpio.input(lamp):
         lampStatus = "ON"
     else:
         lampStatus = "OFF"
+    if isAcap():
+        acapStatus = "ACTIVE"
+    else:
+        acapStatus = "inactive"
+
+    header()
     print (headertable)
     print ()
     print ("Streaming video at tcp/h264://192.168.1.2:19212")
+    print ("ACAP is currently {}.".format(acapStatus))
     print ()
     print ("1. Capture Picture")
     print ("2. Automatic Data Capture")
@@ -289,14 +296,15 @@ def acap_menu():
     if pp:
         poll_period = int(pp)
 
-    acap(poll_interval, cap_interval, poll_period)
+    acapSession = threading.Thread(target=acap, args=(poll_interval, cap_interval, poll_period))
+    acaps.append(acapSession)
+    acapSession.start()
 
 def acap(poll_interval, cap_interval, poll_period):
     # Performs automatic capture of sensor data & pictures
     filename = "{}_ACAP_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S"))
     subheader("Automatic Data Capture")
     autocaptures = []
-    headertable.clear_rows()
 
     with open("{}/{}".format(sessionPath, filename), mode='w') as file:
         dx = csv.writer(file)
@@ -311,14 +319,16 @@ def acap(poll_interval, cap_interval, poll_period):
                 autocaptures.append(autocap)
                 autocap.start()
 
-            headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
-            os.system('clear')
-            print(headertable)
-
             sleep(poll_interval)
             tick += 1
     logging.info("Automatic data capture has ended.")
     return
+
+def isAcap():
+    for t in acaps:
+        if t.is_alive():
+            return True
+    return False
 
 def quitMCD():
     # Gracefully closes the program
@@ -399,6 +409,7 @@ cam = picamera.PiCamera()
 cam.rotation = camrot
 streamThread = threading.Thread(target=netvidHandler, daemon=True)
 streamThread.start()
+acaps = []
 
 lamp = 4       # GPIO pin for the lamp controller
 flash = False  # Determines if lamp should be lit when capturing pictures
