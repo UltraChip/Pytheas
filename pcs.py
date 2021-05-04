@@ -19,6 +19,7 @@ import RPi.GPIO as gpio
 # Quick Values: Settings you might need to change quickly
 
 fileroot = "./"      # Root file path where data gets saved
+auxPath = "./"       # Root path for back up files (ADD TRAILING SLASH!)
 logfile = "pcs.log"  # Location of the PCS log file
 camrot = 0           # Default rotation for the camera
 
@@ -282,54 +283,73 @@ def acap_menu():
     subheader("Automatic Data Capture")
 
     pi = input("Polling interval tick time in seconds (default=1)?   ")
+    bi = input("Back up every X ticks (0 for none, default=50)?      ")
     ci = input("Capture image every X ticks (0 for none [default])?  ")
     pp = input("Total polling period is X ticks long (default=3600)? ")
 
     poll_interval = 1
+    bk_interval = 50
     cap_interval = 0
     poll_period = 3600
 
     if pi:
         poll_interval = float(pi)
+    if bi:
+        bk_interval = int(bi)
     if ci:
         cap_interval = int(ci)
     if pp:
         poll_period = int(pp)
 
-    acapSession = threading.Thread(target=acap, args=(poll_interval, cap_interval, poll_period))
+    acapSession = threading.Thread(target=acap, args=(poll_interval, cap_interval, poll_period, bk_interval))
     acaps.append(acapSession)
     acapSession.start()
 
-def acap(poll_interval, cap_interval, poll_period):
+def acap(poll_interval, cap_interval, poll_period, bk_interval):
     # Performs automatic capture of sensor data & pictures
     filename = "{}_ACAP_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S"))
     subheader("Automatic Data Capture")
-    autocaptures = []
-
+    acapThreads = []
     with open("{}/{}".format(sessionPath, filename), mode='w') as file:
         dx = csv.writer(file)
         dx.writerow(["T", "LTime", "Pressure", "Depth", "ETemp", "ITemp"])
         logging.info("Automatic data capture under file name " + filename + " has begun.")
-        for tick in range(1, poll_period + 1):
-            startTime = time()
+
+    for tick in range(1, poll_period + 1):
+        startTime = time()
+        with open("{}/{}".format(sessionPath, filename), mode='a') as file:
+            dx = csv.writer(file)
             ltime, pressure, depth, etemp, itemp = getReadings()
             dx.writerow([tick, ltime, pressure, depth, etemp, itemp])
 
-            if cap_interval != 0 and tick % cap_interval == 0:
-                autocap = threading.Thread(target=capture, args=("auto",), daemon=False)
-                autocaptures.append(autocap)
-                autocap.start()
+        if cap_interval != 0 and tick % cap_interval == 0:
+            autocap = threading.Thread(target=capture, args=("auto",), daemon=False)
+            acapThreads.append(autocap)
+            autocap.start()
+        
+        if bk_interval != 0 and tick % bk_interval == 0:
+            backups = threading.Thread(target=bkACAP, args=(filename,))
+            acapThreads.append(backups)
+            backups.start()
 
-            # This block ensures that the requested tick rate is accurate by
-            # factoring in how long it took for the tick to process before
-            # sleeping.
-            if (time() - startTime) >= poll_interval:
-                logging.debug("ACAP tick took longer than prescribed tick time!")
-            else:
-                sleep(poll_interval-(time()-startTime))
-            tick += 1
+        # This block ensures that the requested tick rate is accurate by
+        # factoring in how long it took for the tick to process before
+        # sleeping.
+        if (time() - startTime) >= poll_interval:
+            logging.debug("ACAP tick took longer than prescribed tick time!")
+        else:
+            sleep(poll_interval-(time()-startTime))
+        tick += 1
+        
     logging.info("Automatic data capture has ended.")
     return
+
+def bkACAP(filename):
+    # Backs up ACAP capture files to guard against data loss.
+    srcPath = "{}/{}".format(sessionPath, filename)
+    destPath = "{}AUX_{}".format(auxPath, filename)
+    os.system("cp {} {}".format(srcPath, destPath))
+    logging.debug("Copied {} to {}".format(srcPath, destPath))
 
 def isAcap():
     for t in acaps:
