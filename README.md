@@ -4,6 +4,7 @@ Main repository for the Pytheas submersible probe system.
 
 **Misc. Info**
 - The PCS-generated video stream is located at tcp/h264://pytheas-usp:19212
+- Don't forget to enable the I2C and camera module interfaces on the USP - can be done from raspi-config.
 - It is HIGHLY recommended to adjust GPU memory allocation on the USP to 256MB. This can be done from raspi-config.
 
 **List of Acronyms/Terms**
