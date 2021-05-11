@@ -14,6 +14,7 @@ import socket
 import math
 import csv
 import RPi.GPIO as gpio
+import ms5837
 
 
 # Quick Values: Settings you might need to change quickly
@@ -25,11 +26,6 @@ camrot = 0           # Default rotation for the camera
 
 
 # Function declarations
-def dummy(func_name):
-    # Provides dummy output (and a log message) for functions that aren't fully developed yet
-    #logging.debug(func_name + " was called.")
-    return 10
-
 def header():
     # Prints header
     os.system('clear')
@@ -54,6 +50,8 @@ def refreshUI():
     # Prints the main menu & adds entry to the passive capture log
     headertable.clear_rows()
     ltime, pressure, depth, etemp, itemp = writeLog("")
+    pressure = round(pressure, 2)
+    depth = round(depth, 2)
     headertable.add_row([ltime, str(pressure) + " mbar", str(depth) + " m", str(etemp) + " C", str(itemp) + " C"])
     
     if gpio.input(lamp):
@@ -82,15 +80,16 @@ def refreshUI():
     print ()
 
 def getReadings():
-    # Polls the sensors & gathers data
+    # Gathers sensor data
     ltime = strftime("%H:%M:%S")
-    pressure = dummy("getReadings-pressure")
-    depth = dummy("getReadings-depth")
-    etemp = dummy("getReadings-etemp")
+    pressure = baro.pressure()
+    depth = baro.depth()
+    etemp = round(baro.temperature(), 2)
     itemp = round(float(subprocess.getoutput('cat /sys/class/thermal/thermal_zone0/temp')) / 1000, 2)
     return ltime, pressure, depth, etemp, itemp
 
 def writeLog(note):
+    # Writes an entry in the passive log
     ltime, pressure, depth, etemp, itemp = getReadings()
     with open(sessionFullFile, mode='a') as file:
         dx = csv.writer(file)
@@ -103,6 +102,7 @@ def capture(capmode):
     gpio.output(lamp, flash)
     try:
         cam.resolution = (3280, 2464)  # 3280x2462 == max resolution of picamera v2
+        cam.annotate_text_size = 50
     except picamera.exc.PiCameraRuntimeError:
         logging.info("Preview stream is open - camera capturing at reduced resolution.")
     filename = "{}_{}_{}.png".format(sessionName, capmode, strftime("%Y%m%d-%H%M%S"))
@@ -396,7 +396,11 @@ def netStream(connection):
         except:
             pass
 
-    cam.resolution = (1280, 720)
+    try:
+        cam.resolution = (1280, 720)
+        cam.annotate_text_size = 30
+    except:
+        closeConnect("Failed Previous Closeout")
     cam.framerate = 24
     cam.start_recording(connection, format='h264')
     run = True
@@ -422,12 +426,27 @@ def buildAnnotate():
     # Builds the annotation string for the camera
     ltime, pressure, depth, etemp, itemp = getReadings()
     cam.annotate_background = picamera.Color('black')
+    pressure = round(pressure, 2)
+    depth = round(depth, 2)
     cam.annotate_text = "Time: {} | Pressure: {}mbar | Depth: {}m | ETemp: {}C | ITemp {}C".format(ltime, pressure, depth, etemp, itemp)
 
+def baroPoller():
+    # Polls the baro sensor at an orderly interval
+    while True:
+        try:
+            baro.read()
+        except:
+            logging.debug("Tried to read baro sensor, but couldn't!")
+        sleep(0.5) # Wait before polling again
 
-# Initialization
+
+# INITIALIZATION
+
+# Set up header table
 headertable = PrettyTable()
 headertable.field_names = ["Local Time", "Pressure (millibars)", "Depth (meters)", "External Temp", "Internal Temp"]
+
+# Set up logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -435,8 +454,8 @@ logging.basicConfig(
         logging.FileHandler(logfile)
     ]
 )
-logging.info("MCD has started.")
 
+# Initialize camera & lamp
 cam = picamera.PiCamera()
 cam.rotation = camrot
 streamThread = threading.Thread(target=netvidHandler, daemon=True)
@@ -450,6 +469,18 @@ gpio.setwarnings(False)
 gpio.setup(lamp, gpio.OUT)
 gpio.output(lamp, False)
 
+# Initialize pressure/temp sensor
+baro = ms5837.MS5837_30BA()
+if not baro.init():
+    logging.debug("Pressure sensor could not be initialized!")
+    sys.exit()
+#setFluidDensity(ms5837.DENSITY_SALTWATER)  # Un-comment if operating in saltwater, defaults to freshwater
+bpThread = threading.Thread(target=baroPoller)
+bpThread.start()
+
+logging.info("PCS has started.")
+
+# Set up the session
 print()
 sessionName = input("What is the name of this session? ")
 sessionPath = "{}/{}".format(fileroot, sessionName)
@@ -459,10 +490,10 @@ sessionFullFile = "{}/{}".format(sessionPath, sessionFile)
 with open(sessionFullFile, mode='a') as file:
     dx = csv.writer(file)
     dx.writerow(["LTime", "Pressure", "Depth", "ETemp", "ITemp", "Notes"])
-logging.info("MCD session " + sessionName + " has been initialized.")
+logging.info("PCS session " + sessionName + " has been initialized.")
 
 
-# Main Loop
+# MAIN
 while True:
     refreshUI()
     choice = int(input("Please choose a command: "))
@@ -480,11 +511,12 @@ while True:
         print()
         note = input("Write your note here: ")
         writeLog(note)
+        logging.info("User-written note: " + note)
         refreshUI()
     elif choice ==5:
         toggleLamp()
     elif choice == 9:
-        refreshUI()
+        pass
     elif choice == 0:
         quitMCD()
     else:
