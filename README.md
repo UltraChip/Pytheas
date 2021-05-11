@@ -31,4 +31,7 @@ Main repository for the Pytheas submersible probe system.
 **Dependencies for USP**
 - Python 3
 - PrettyTable python library
+- BlueRobotics ms5837-python library - repackaged in this repo but fresh copy can be sourced from https://github.com/bluerobotics/ms5837-python
+- python-smbus library (needed for ms5837-python)
 - Screen
+
