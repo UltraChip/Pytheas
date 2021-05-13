@@ -359,13 +359,18 @@ def isAcap():
 
 def quitMCD():
     # Gracefully closes the program
+    global pollActive
+    logging.info("User-invoked QUIT")
     if isAcap():
         print()
         print("ACAP is currently active! Quitting is not recommended.")
         sleep(2)
         return
+    pollActive = False
+    logging.debug("Sent kill signal to baro poller.")
     gpio.output(lamp, False)
-    logging.info("User-invoked QUIT")
+    bpThread.join()
+    logging.debug("Baro poller shut down successfully.")
     sys.exit()
 
 def netvidHandler():
@@ -432,12 +437,13 @@ def buildAnnotate():
 
 def baroPoller():
     # Polls the baro sensor at an orderly interval
-    while True:
+    while pollActive:
         try:
             baro.read()
         except:
             logging.debug("Tried to read baro sensor, but couldn't!")
         sleep(0.5) # Wait before polling again
+    logging.debug("Baro poller attempting to shut down...")
 
 
 # INITIALIZATION
@@ -471,7 +477,10 @@ gpio.output(lamp, False)
 
 # Initialize pressure/temp sensor
 baro = ms5837.MS5837_30BA()
-if not baro.init():
+pollActive = True
+try:
+    baro.init()
+except:
     logging.debug("Pressure sensor could not be initialized!")
     sys.exit()
 #setFluidDensity(ms5837.DENSITY_SALTWATER)  # Un-comment if operating in saltwater, defaults to freshwater
