@@ -3,3 +3,7 @@
 
 # Ignore any MCD-generated files
 MCD_*
+
+# Ignore pycache if it exists
+__pycache__
+*.pyc
