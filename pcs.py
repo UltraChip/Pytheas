@@ -22,7 +22,7 @@ import ms5837
 fileroot = "./"      # Root file path where data gets saved
 auxPath = "./"       # Root path for back up files (ADD TRAILING SLASH!)
 logfile = "pcs.log"  # Location of the PCS log file
-camrot = 0           # Default rotation for the camera
+camrot = 270         # Default rotation for the camera
 
 
 # Function declarations
