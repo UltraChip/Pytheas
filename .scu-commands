@@ -1,0 +1,38 @@
+## SCU COMMANDS
+##
+## A collection of functions for the SCU to make 
+## managing the system easier. Intended to be
+## added to the SCU's .bashrc or .bash_aliases
+## file.
+
+
+# Quick-start PCS
+start-pcs(){
+    echo
+    echo "Starting PCS..."
+    ssh -t usp "screen -S pcs sh /home/chip/pytheas/start-usp.sh"
+}
+
+# Remove all session data from USP
+purge-usp(){
+    ssh usp "rm -rf /mnt/sessions/*"
+    ssh usp "rm /mnt/pcs.log"
+    echo
+    echo "Purged all session data from USP!"
+    echo
+}
+
+# Download all session data from USP
+dl-usp(){
+    if [ ! -d "/home/chip/sessions" ]; then
+        mkdir "/home/chip/sessions"
+        echo -e "\n\n~/sessions didn't exist, so it was created."
+    fi
+    scp -r usp:/mnt/sessions/* ~/sessions
+    scp usp:/mnt/pcs.log ~/sessions/pcs.log
+}
+
+# View the USP live stream
+start-stream(){
+    vlc tcp/h264://pytheas-usp:19212
+}

@@ -19,10 +19,10 @@ import ms5837
 
 # Quick Values: Settings you might need to change quickly
 
-fileroot = "./"      # Root file path where data gets saved
-auxPath = "./"       # Root path for back up files (ADD TRAILING SLASH!)
-logfile = "pcs.log"  # Location of the PCS log file
-camrot = 270         # Default rotation for the camera
+fileroot = "/mnt"         # Root file path where data gets saved
+auxPath = "/backups/"     # Root path for back up files (ADD TRAILING SLASH!)
+logfile = "/mnt/pcs.log"  # Location of the PCS log file
+camrot = 270              # Default rotation for the camera
 
 
 # Function declarations
@@ -66,7 +66,7 @@ def refreshUI():
     header()
     print (headertable)
     print ()
-    print ("Streaming video at tcp/h264://192.168.1.2:19212")
+    print ("Streaming video at tcp/h264://pytheas-usp:19212")
     print ("ACAP is currently {}.".format(acapStatus))
     print ()
     print ("1. Capture Picture")
@@ -478,11 +478,15 @@ gpio.output(lamp, False)
 # Initialize pressure/temp sensor
 baro = ms5837.MS5837_30BA()
 pollActive = True
-try:
-    baro.init()
-except:
-    logging.debug("Pressure sensor could not be initialized!")
-    sys.exit()
+baroInit = False
+while not baroInit:
+    try:
+        baro.init()
+        logging.debug("Pressure sensor initialized successfully.")
+        baroInit = True
+    except:
+        logging.debug("Pressure sensor could not be initialized!")
+        sleep(1)
 #setFluidDensity(ms5837.DENSITY_SALTWATER)  # Un-comment if operating in saltwater, defaults to freshwater
 bpThread = threading.Thread(target=baroPoller)
 bpThread.start()
@@ -492,7 +496,7 @@ logging.info("PCS has started.")
 # Set up the session
 print()
 sessionName = input("What is the name of this session? ")
-sessionPath = "{}/{}".format(fileroot, sessionName)
+sessionPath = "{}/sessions/{}".format(fileroot, sessionName)
 os.system("mkdir {}".format(sessionPath))
 sessionFile = "{}_passiveCap_{}.csv".format(sessionName, strftime("%Y%m%d-%H%M%S"))
 sessionFullFile = "{}/{}".format(sessionPath, sessionFile)
