@@ -1,3 +1,9 @@
+## THIS LIBRARY WAS WRITTEN BY BLUE ROBOTICS
+## It was lightly modified in order to support Python3
+##
+## The original code (including the MIT license that it was released under) can
+## be found at: https://github.com/bluerobotics/ms5837-python
+
 try:
     import smbus
 except:
