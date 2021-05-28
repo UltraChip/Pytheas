@@ -17,12 +17,16 @@ fi
 
 # Mount the NFS share used to back up files
 sudo mount scu:/usp-backups $auxdir
+echo -e "\nMounted SCU backup share to $auxdir"
 
-# Give a small delay to make sure everything initiates nicely
-echo
-echo "Waiting 5 seconds. . ."
-sleep 5s
-echo
+# Check the date/time and reset if neccessary
+echo -e "\nThe current date is $(date +%m/%d/%Y)"
+echo -e "The current time is $(date +%H:%M)\n"
+
+read -p "Enter time in format YYYY-MM-DD HH:MM:SS (or enter for no change): " timestamp
+if [ -n $timestamp ]; then
+    sudo date -s "$timestamp"
+fi
 
 # Kick off PCS
 python3 /home/chip/pytheas/pcs.py
