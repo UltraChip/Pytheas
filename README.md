@@ -10,6 +10,7 @@ Main repository for the Pytheas submersible probe system.
 - **Passive**         - As in, passive captures. Shorthand for the standard csv capture file generated for each session recording any instance the sensors are manually polled.
 
 **Installation Instructions**
+
 *Work in Progress* - I plan to write a script(s?) to automate the installation process soon. In the meantime, consider these bare-bones instructions for the USP:
 1. Start with a Raspberry Pi imaged with PiOS and wired according to the block diagram in this repository.
 2. In raspi-config make sure that the I2C and camera module interfaces are enabled. I also STRONGLY recommend resetting GPU memory allocation to 256MB.
@@ -41,6 +42,7 @@ Likewise, consider this the bare-bones instructions for the SCU:
 - nfs-kernel-server
 
 **SCU COMMANDS**
+
 These commands can be issued from the SCU terminal window
 - **start-pcs**    - Initializes the PCS software on the USP
 - **start-stream** - Brings up the live video stream in a VLC window
